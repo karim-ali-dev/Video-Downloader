@@ -98,13 +98,15 @@ def build_format_string(fmt, quality):
         return 'bestaudio/best'
     if quality == 'الأفضل':
         if fmt == 'mp4':
-            return 'bestvideo[ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a]/bestvideo+bestaudio/best'
-        return 'bestvideo+bestaudio/best'
+            return ('best[ext=mp4]/bestvideo[ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a]'
+                    '/bestvideo+bestaudio/best')
+        return 'best/bestvideo+bestaudio/best'
     h = HEIGHTS.get(quality, '1080')
     if fmt == 'mp4':
-        return (f'bestvideo[ext=mp4][vcodec^=avc1][height<={h}]+bestaudio[ext=m4a]'
+        return (f'best[ext=mp4][height<={h}]'
+                f'/bestvideo[ext=mp4][vcodec^=avc1][height<={h}]+bestaudio[ext=m4a]'
                 f'/bestvideo[height<={h}]+bestaudio[height<={h}]/best')
-    return f'bestvideo[height<={h}]+bestaudio[height<={h}]/best'
+    return f'best[height<={h}]/bestvideo[height<={h}]+bestaudio[height<={h}]/best'
 
 
 def fmt_duration(sec):
@@ -990,7 +992,7 @@ class App:
             'logger': _Logger(),
             'ffmpeg_location': get_ffmpeg_dir(),
             'noprogress': True,
-            'restrictfilenames': False,
+            'restrictfilenames': True,
             'retries': 10,
             'fragment_retries': 10,
             'concurrent_fragment_downloads': 4,

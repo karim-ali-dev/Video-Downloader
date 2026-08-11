@@ -15,8 +15,7 @@ import uuid
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import urlparse, parse_qs
-from io import BytesIO
+from urllib.parse import urlparse
 
 import yt_dlp
 
@@ -30,7 +29,7 @@ PAGE = '''<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Video Downloader - ┘ê┘è╪¿</title>
+<title>Video Downloader - ويب</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: "Segoe UI", Tahoma, Arial, sans-serif; background: #121212; color: #fff;
@@ -55,17 +54,17 @@ PAGE = '''<!doctype html>
 </head>
 <body>
 <div class="card">
-  <h1>Γ¼ç∩╕Å Video Downloader</h1>
-  <div class="sub">┘à╪¼╪º┘å┘è ╪¿╪º┘ä┘â╪º┘à┘ä ΓÇö yt-dlp + FFmpeg</div>
-  <textarea id="urls" placeholder="╪º┘ä╪╡┘é ╪º┘ä╪▒┘ê╪º╪¿╪╖ ┘ç┘å╪º... ╪▒╪º╪¿╪╖ ┘ü┘è ┘â┘ä ╪│╪╖╪▒"></textarea>
-  <div class="row"><label>╪º┘ä╪╡┘è╪║╪⌐</label>
+  <h1>⬇️ Video Downloader</h1>
+  <div class="sub">مجاني بالكامل — yt-dlp + FFmpeg</div>
+  <textarea id="urls" placeholder="الصق الروابط هنا... رابط في كل سطر"></textarea>
+  <div class="row"><label>الصيغة</label>
     <select id="fmt">
-      <option value="mp4">MP4 ┘ü┘è╪»┘è┘ê</option>
-      <option value="mkv">MKV ┘ü┘è╪»┘è┘ê</option>
-      <option value="mp3">MP3 ╪╡┘ê╪¬</option>
+      <option value="mp4">MP4 فيديو</option>
+      <option value="mkv">MKV فيديو</option>
+      <option value="mp3">MP3 صوت</option>
     </select>
   </div>
-  <button id="btn" onclick="go()">≡ƒÜÇ ╪¬╪¡┘à┘è┘ä</button>
+  <button id="btn" onclick="go()">🚀 تحميل</button>
   <div class="status" id="status"></div>
 </div>
 <script>
@@ -73,9 +72,9 @@ var poll = null;
 function go() {
   var urls = document.getElementById('urls').value.trim().split(/\\n+/).filter(Boolean);
   var fmt = document.getElementById('fmt').value;
-  if (!urls.length) { show('╪º┘ä╪╡┘é ╪▒╪º╪¿╪╖ ╪╣┘ä┘ë ╪º┘ä╪ú┘é┘ä', 'err'); return; }
+  if (!urls.length) { show('الصق رابط على الأقل', 'err'); return; }
   document.getElementById('btn').disabled = true;
-  show('╪¼╪º╪▒┘ì ╪º┘ä┘à╪╣╪º┘ä╪¼╪⌐...');
+  show('جارٍ المعالجة...');
   fetch('/download', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
@@ -85,24 +84,24 @@ function go() {
       if (d.id) {
         poll = setInterval(function(){ check(d.id); }, 1500);
       } else {
-        show(d.error || '╪¡╪»╪½ ╪«╪╖╪ú', 'err');
+        show(d.error || 'حدث خطأ', 'err');
         document.getElementById('btn').disabled = false;
       }
-    }).catch(function(){ show('╪«╪╖╪ú ┘ü┘è ╪º┘ä╪º╪¬╪╡╪º┘ä', 'err'); document.getElementById('btn').disabled = false; });
+    }).catch(function(){ show('خطأ في الاتصال', 'err'); document.getElementById('btn').disabled = false; });
 }
 function check(id) {
   fetch('/status/' + id).then(function(r){ return r.json(); })
     .then(function(d){
       if (d.done) {
         clearInterval(poll);
-        show(d.msg || '╪º┘ä┘ü┘è╪»┘è┘ê ╪¼╪º┘ç╪▓ ΓÇö ╪¼╪º╪▒┘è ┘ü╪¬╪¡┘ç...', 'ok');
+        show(d.msg || 'الفيديو جاهز — جاري فتحه...', 'ok');
         window.location.href = '/file/' + id;
       } else if (d.error) {
         clearInterval(poll);
         show(d.error, 'err');
         document.getElementById('btn').disabled = false;
       } else {
-        show(d.msg || '╪¼╪º╪▒┘ì ╪º┘ä╪¬╪¡┘à┘è┘ä...');
+        show(d.msg || 'جارٍ التحميل...');
       }
     }).catch(function(){});
 }
@@ -136,7 +135,7 @@ class Job:
         self.dir.mkdir(exist_ok=True)
         self.done = False
         self.error = None
-        self.msg = '┘ü┘è ┘é╪º╪ª┘à╪⌐ ╪º┘ä╪º┘å╪¬╪╕╪º╪▒...'
+        self.msg = 'في قائمة الانتظار...'
         threading.Thread(target=self.run, daemon=True).start()
 
     def build_opts(self):
@@ -146,6 +145,7 @@ class Job:
             'no_warnings': True,
             'ffmpeg_location': get_ffmpeg_dir(),
             'noprogress': True,
+            'restrictfilenames': True,
             'retries': 5,
             'socket_timeout': 30,
             'progress_hooks': [self.hook],
@@ -157,10 +157,11 @@ class Job:
                                        'preferredquality': '192'}]
         else:
             if fmt == 'mp4':
-                opts['format'] = ('bestvideo[ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a]'
+                opts['format'] = ('best[ext=mp4]'
+                                  '/bestvideo[ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a]'
                                   '/bestvideo+bestaudio/best')
             else:
-                opts['format'] = 'bestvideo+bestaudio/best'
+                opts['format'] = 'best/bestvideo+bestaudio/best'
             opts['merge_output_format'] = fmt
             opts['postprocessors'] = [{'key': 'FFmpegVideoConvertor', 'preferedformat': fmt}]
         return opts
@@ -172,19 +173,19 @@ class Job:
             done = d.get('downloaded_bytes') or 0
             pct = done / total * 100 if total else 0
             sp = d.get('speed')
-            text = f'╪º┘ä╪¬╪¡┘à┘è┘ä: {pct:.0f}%'
+            text = f'التحميل: {pct:.0f}%'
             if sp:
-                text += f'  ({human_size(sp)}/╪½)'
+                text += f'  ({human_size(sp)}/ث)'
             self.msg = text
         elif s == 'finished':
-            self.msg = '┘à╪╣╪º┘ä╪¼╪⌐ ╪º┘ä┘à┘ä┘ü (╪»┘à╪¼/╪¬╪¡┘ê┘è┘ä)...'
+            self.msg = 'معالجة الملف (دمج/تحويل)...'
 
     def run(self):
         try:
             with yt_dlp.YoutubeDL(self.build_opts()) as ydl:
                 ydl.download(self.urls)
             self.done = True
-            self.msg = '╪º┘â╪¬┘à┘ä'
+            self.msg = 'اكتمل'
         except Exception as e:
             self.error = str(e)[:200]
             self.msg = self.error
@@ -200,7 +201,7 @@ class Job:
 def human_size(n):
     if not n:
         return ''
-    for unit in ('╪¿╪º┘è╪¬', 'KB', 'MB', 'GB'):
+    for unit in ('بايت', 'KB', 'MB', 'GB'):
         if n < 1024:
             return f'{n:.1f} {unit}'
         n /= 1024
@@ -236,7 +237,7 @@ class Handler(BaseHTTPRequestHandler):
             tid = path[len('/status/'):]
             job = JOBS.get(tid)
             if not job:
-                self._json({'error': '╪º┘ä┘à┘ç┘à╪⌐ ╪║┘è╪▒ ┘à┘ê╪¼┘ê╪»╪⌐'})
+                self._json({'error': 'المهمة غير موجودة'})
                 return
             self._json({'done': job.done, 'msg': job.msg, 'error': job.error})
             return
@@ -244,16 +245,16 @@ class Handler(BaseHTTPRequestHandler):
             tid = path[len('/file/'):]
             job = JOBS.get(tid)
             if not job or not job.done:
-                self._json({'error': '╪º┘ä┘à┘ä┘ü ╪║┘è╪▒ ╪¼╪º┘ç╪▓ ╪¿╪╣╪»'})
+                self._json({'error': 'الملف غير جاهز بعد'})
                 return
             files = [f for f in job.dir.iterdir()
                      if f.is_file() and not f.name.endswith(('.part', '.ytdl'))]
             if not files:
-                self._json({'error': '┘ä╪º ┘è┘ê╪¼╪» ┘à┘ä┘ü'})
+                self._json({'error': 'لا يوجد ملف'})
                 return
             target = max(files, key=lambda f: f.stat().st_size)
             if target.suffix not in ('.mp4', '.mkv', '.mp3', '.webm', '.m4a', '.mov'):
-                self._json({'error': '╪╡┘è╪║╪⌐ ╪║┘è╪▒ ┘à╪»╪╣┘ê┘à╪⌐'})
+                self._json({'error': 'صيغة غير مدعومة'})
                 return
             self.send_response(200)
             ctype = mimetypes.guess_type(target.name)[0] or 'application/octet-stream'
@@ -277,12 +278,12 @@ class Handler(BaseHTTPRequestHandler):
             raw = self.rfile.read(length)
             data = json.loads(raw.decode('utf-8'))
         except Exception:
-            self._json({'error': '╪╖┘ä╪¿ ╪║┘è╪▒ ╪╡╪º┘ä╪¡'}, 400)
+            self._json({'error': 'طلب غير صالح'}, 400)
             return
         urls = [u.strip() for u in (data.get('urls') or []) if u.strip()]
         fmt = (data.get('fmt') or 'mp4').strip().lower()
         if not urls:
-            self._json({'error': '┘ä╪º ┘è┘ê╪¼╪» ╪▒┘ê╪º╪¿╪╖'}, 400)
+            self._json({'error': 'لا يوجد روابط'}, 400)
             return
         tid = uuid.uuid4().hex[:12]
         JOBS[tid] = Job(tid, urls, fmt)
@@ -304,11 +305,11 @@ def main():
     except Exception:
         pass
     print('=' * 50)
-    print('  Video Downloader ΓÇö ╪º┘ä┘å╪│╪«╪⌐ ╪º┘ä┘ê┘è╪¿')
+    print('  Video Downloader — النسخة الويب')
     print('=' * 50)
-    print(f'  ┘à┘å ╪º┘ä╪¼┘ç╪º╪▓ ╪»┘ç:  http://127.0.0.1:{port}')
-    print(f'  ┘à┘å ╪º┘ä┘à┘ê╪¿╪º┘è┘ä (┘å┘ü╪│ ╪º┘ä┘ê╪º┘è ┘ü╪º┘è):  http://{local_ip}:{port}')
-    print('  ┘ê┘é┘ü: Ctrl+C')
+    print(f'  من الجهاز ده:  http://127.0.0.1:{port}')
+    print(f'  من الموبايل (نفس الواي فاي):  http://{local_ip}:{port}')
+    print('  وقف: Ctrl+C')
     print('=' * 50)
     if os.environ.get('WINDOWS_OPEN'):
         webbrowser.open(f'http://127.0.0.1:{port}')
