@@ -85,7 +85,7 @@ def lerp(a, b, t):
 def get_ffmpeg_dir():
     candidates = []
     if getattr(sys, 'frozen', False):
-        candidates.append(Path(getattr(sys, '_MEIPASS', BASE_DIR)))
+        candidates.append(Path(getattr(sys, '_MEIPASS', BASE_DIR)) / 'tools' / 'ffmpeg')
     candidates.append(BASE_DIR / 'tools' / 'ffmpeg')
     for cand in candidates:
         if (cand / 'ffmpeg.exe').is_file() and (cand / 'ffprobe.exe').is_file():
@@ -616,16 +616,27 @@ class App:
 
     def _on_mousewheel(self, e):
         if self.canvas.winfo_height() and self.content_root.winfo_reqheight() > self.canvas.winfo_height():
-            self.canvas.yview_scroll(int(-1 * (e.delta / 120)), 'units')
-        return None
+            d = e.delta
+            if d:
+                steps = int(-1 * d / 120 * 3)
+                if not steps:
+                    steps = -1 if d < 0 else 1
+                self.canvas.yview_scroll(steps, 'units')
+        return 'break'
 
     def refresh_scroll(self):
+        now = time.monotonic()
+        if getattr(self, '_last_refresh', 0) and now - self._last_refresh < 0.12:
+            return
+        self._last_refresh = now
         self.root.after_idle(self._do_refresh)
 
     def _do_refresh(self):
         try:
-            self.content_root.update_idletasks()
-            self.canvas.configure(scrollregion=self.canvas.bbox('all'))
+            region = self.canvas.bbox('all')
+            if region != getattr(self, '_last_region', None):
+                self._last_region = region
+                self.canvas.configure(scrollregion=region)
         except tk.TclError:
             pass
 
@@ -686,7 +697,7 @@ class App:
 
     def _build_ui_2(self):
         self._heading('⬇️ Video Downloader')
-        sub = tk.Label(self.content_root, text='جميع الأدوات مجانية (yt-dlp + FFmpeg) — الصق الروابط وشغّل',
+        sub = tk.Label(self.content_root, text='مجاني بالكامل — الصق الروابط وضغط تحميل',
                        bg=C_BG, fg=C_MUT, font=('Segoe UI', 9), anchor='e')
         sub.pack(fill='x', padx=20, pady=(0, 10))
 
@@ -708,7 +719,6 @@ class App:
         self.url_text.bind('<Control-V>', self._handle_paste)
         self.url_text.bind('<Control-c>', self._handle_copy)
         self.url_text.bind('<Control-a>', self._select_all)
-        self.url_text.bind('<Control-KeyPress>', self._ctrl_any)
         url_btn_row = tk.Frame(url_card, bg=C_CARD)
         url_btn_row.pack(fill='x', padx=12, pady=(2, 10))
         paste_btn = tk.Button(url_btn_row, text='📋 لصق', command=self._do_paste, bg=C_ACC, fg='white',
@@ -829,18 +839,6 @@ class App:
         self.audio_bitrate.set(AUDIO_BITRATES.get(self.bitrate_var.get(), '128'))
         self.update_total()
 
-    def _ctrl_any(self, e):
-        ch = e.keysym.lower()
-        if ch == 'v':
-            return self._handle_paste(e)
-        if ch == 'c':
-            return self._handle_copy(e)
-        if ch == 'a':
-            return self._select_all(e)
-        if ch == 'x':
-            return 'break'
-        return 'break'
-
     def _select_all(self, e=None):
         if self.url_text.get('1.0', 'end').strip() == PLACEHOLDER:
             return 'break'
@@ -909,11 +907,16 @@ class App:
             raw = self.root.clipboard_get()
         except tk.TclError:
             raw = ''
-        self.url_text.delete('1.0', 'end')
-        self.url_text.insert('1.0', raw)
-        self.url_text.configure(fg=C_FG)
-        if self.url_text.get('1.0', 'end').strip():
-            self.on_url_focus_in()
+        if not raw:
+            return
+        self.on_url_focus_in()
+        try:
+            self.url_text.insert('insert', raw)
+        except tk.TclError:
+            try:
+                self.url_text.insert('1.0', raw)
+            except tk.TclError:
+                return
         self._update_url_hint()
         self.post(self._auto_add_items)
 
@@ -977,7 +980,8 @@ class App:
         return {
             'quiet': True,
             'no_warnings': True,
-            'noplaylist': False,
+            'noplaylist': True,
+            'extract_flat': 'in_playlist',
             'logger': _Logger(),
             'ffmpeg_location': get_ffmpeg_dir(),
         }
@@ -989,6 +993,7 @@ class App:
             'outtmpl': out,
             'quiet': True,
             'no_warnings': True,
+            'noplaylist': True,
             'logger': _Logger(),
             'ffmpeg_location': get_ffmpeg_dir(),
             'noprogress': True,
@@ -1133,7 +1138,7 @@ class App:
     def set_footer(self):
         self.footer_lbl.configure(
             text=f'📱 تواصل مع المطور: {DEV_WHATSAPP}'
-                 f'\nكل الأدوات مجانية: yt-dlp + FFmpeg — {APP_NAME} v{VERSION}')
+                 f'\nالبرنامج مجاني بالكامل — كل اللي محتاجه إنك تلصق الرابط وتضغط تحميل 😊')
 
     def contact_developer(self, e=None):
         webbrowser.open(f'https://wa.me/2{DEV_WHATSAPP}')
@@ -1190,8 +1195,9 @@ class App:
             if not entry or not entry.get('id'):
                 continue
             web_url = entry.get('webpage_url') or entry.get('url')
-            if web_url:
-                urls.append(web_url)
+            if not web_url or not str(web_url).startswith('http'):
+                continue
+            urls.append(str(web_url))
         self._add_urls(urls)
         self.set_status(f'تم توسيع قائمة تشغيل إلى {len(urls)} فيديو', C_GOOD)
 
