@@ -1209,10 +1209,26 @@ def run_cli():
     return 0
 
 
+def get_icon_path():
+    base = Path(getattr(sys, '_MEIPASS', BASE_DIR))
+    for name in ('app_icon.ico', 'app_icon.png'):
+        p = base / name
+        if p.is_file():
+            return str(p)
+    return None
+
+
 def main():
     if '--cli' in sys.argv:
         return run_cli()
     root = tk.Tk()
+    icon = get_icon_path()
+    if icon:
+        try:
+            root.iconbitmap(default=icon)
+            root.iconphoto(True, tk.PhotoImage(file=icon))
+        except Exception:
+            pass
     App(root)
     root.mainloop()
     return 0
