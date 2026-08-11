@@ -55,7 +55,7 @@ PAGE = '''<!doctype html>
 <body>
 <div class="card">
   <h1>⬇️ Video Downloader</h1>
-  <div class="sub">مجاني بالكامل — yt-dlp + FFmpeg</div>
+  <div class="sub">مجاني بالكامل</div>
   <textarea id="urls" placeholder="الصق الروابط هنا... رابط في كل سطر"></textarea>
   <div class="row"><label>الصيغة</label>
     <select id="fmt">
@@ -116,7 +116,10 @@ function show(msg, cls) {
 
 
 def get_ffmpeg_dir():
-    cands = [BASE_DIR / 'tools' / 'ffmpeg']
+    cands = []
+    if getattr(sys, 'frozen', False):
+        cands.append(Path(getattr(sys, '_MEIPASS', BASE_DIR)) / 'tools' / 'ffmpeg')
+    cands.append(BASE_DIR / 'tools' / 'ffmpeg')
     local = os.environ.get('LOCALAPPDATA')
     if local:
         cands.append(Path(local))
