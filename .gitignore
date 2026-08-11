@@ -12,6 +12,7 @@ tools/
 
 # Release archives
 *.zip
+*.exe
 
 # History / local state
 download_history.json
