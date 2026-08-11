@@ -15,6 +15,7 @@ tools/
 
 # History / local state
 download_history.json
+.web_tmp/
 
 # Editor / OS
 .vscode/
