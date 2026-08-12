@@ -584,6 +584,8 @@ class App:
         self.canvas.bind('<Configure>', self._canvas_resized)
         self.content_root.bind('<Configure>', self._on_content_configure)
         self.root.bind_all('<MouseWheel>', self._on_mousewheel)
+        self.root.bind_all('<Control-Return>', lambda e: self.start_all())
+        self.root.bind_all('<Control-KP_Enter>', lambda e: self.start_all())
         self._canvas_resized_id = None
         self._build_ui_2()
 
@@ -697,7 +699,7 @@ class App:
 
     def _build_ui_2(self):
         self._heading('⬇️ Video Downloader')
-        sub = tk.Label(self.content_root, text='مجاني بالكامل — الصق الروابط وضغط تحميل',
+        sub = tk.Label(self.content_root, text='مجاني بالكامل — الصق الروابط وضغط تحميل (Ctrl+V لصق • Ctrl+Enter تحميل)',
                        bg=C_BG, fg=C_MUT, font=('Segoe UI', 9), anchor='e')
         sub.pack(fill='x', padx=20, pady=(0, 10))
 
@@ -718,7 +720,13 @@ class App:
         self.url_text.bind('<Control-v>', self._handle_paste)
         self.url_text.bind('<Control-V>', self._handle_paste)
         self.url_text.bind('<Control-c>', self._handle_copy)
+        self.url_text.bind('<Control-C>', self._handle_copy)
+        self.url_text.bind('<Control-x>', self._handle_cut)
+        self.url_text.bind('<Control-X>', self._handle_cut)
         self.url_text.bind('<Control-a>', self._select_all)
+        self.url_text.bind('<Control-z>', self._handle_undo)
+        self.url_text.bind('<Control-y>', self._handle_redo)
+        self.url_text.bind('<Control-Z>', self._handle_redo)
         url_btn_row = tk.Frame(url_card, bg=C_CARD)
         url_btn_row.pack(fill='x', padx=12, pady=(2, 10))
         paste_btn = tk.Button(url_btn_row, text='📋 لصق', command=self._do_paste, bg=C_ACC, fg='white',
@@ -851,6 +859,18 @@ class App:
             self.root.clipboard_append(self.url_text.selection_get())
         except tk.TclError:
             pass
+        return 'break'
+
+    def _handle_cut(self, e=None):
+        self.url_text.event_generate('<<Cut>>')
+        return 'break'
+
+    def _handle_undo(self, e=None):
+        self.url_text.event_generate('<<Undo>>')
+        return 'break'
+
+    def _handle_redo(self, e=None):
+        self.url_text.event_generate('<<Redo>>')
         return 'break'
 
     def _handle_paste(self, e=None):
